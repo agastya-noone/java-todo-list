@@ -58,6 +58,7 @@
         cancelModalBtn: document.getElementById('cancelModalBtn'),
         taskForm: document.getElementById('taskForm'),
         modalTitle: document.getElementById('modalTitle'),
+        saveTaskBtn: document.getElementById('saveTaskBtn'),
         saveBtnText: document.getElementById('saveBtnText'),
         taskId: document.getElementById('taskId'),
         taskTitle: document.getElementById('taskTitle'),
@@ -480,20 +481,32 @@
         elements.taskForm.reset();
     }
 
+    function setButtonLoading(btn, isLoading, loadingText = null, originalText = null) {
+        if (!btn) return;
+        btn.disabled = !!isLoading;
+        if (loadingText && isLoading) {
+            const textTarget = btn.querySelector('span') || btn;
+            textTarget.textContent = loadingText;
+        } else if (originalText && !isLoading) {
+            const textTarget = btn.querySelector('span') || btn;
+            textTarget.textContent = originalText;
+        }
+    }
+
     async function handleFormSubmit(e) {
         e.preventDefault();
 
-        const title = elements.taskTitle.value.trim();
+        const title = elements.taskTitle?.value?.trim() || '';
         if (!title) {
-            elements.titleError.classList.remove('hidden');
-            elements.taskTitle.focus();
+            elements.titleError?.classList.remove('hidden');
+            elements.taskTitle?.focus();
             return;
         }
-        elements.titleError.classList.add('hidden');
+        elements.titleError?.classList.add('hidden');
 
-        const priority = elements.taskForm.querySelector('input[name="priority"]:checked')?.value || 'MEDIUM';
-        const description = elements.taskDescription.value.trim();
-        const dueDate = elements.taskDueDate.value || null;
+        const priority = elements.taskForm?.querySelector('input[name="priority"]:checked')?.value || 'MEDIUM';
+        const description = elements.taskDescription?.value?.trim() || '';
+        const dueDate = elements.taskDueDate?.value || null;
 
         const payload = {
             title: title,
@@ -502,12 +515,14 @@
             dueDate: dueDate
         };
 
+        const defaultSaveText = state.isEditing ? 'Update Task' : 'Save Task';
+
         try {
-            elements.saveTaskBtn.disabled = true;
+            setButtonLoading(elements.saveTaskBtn, true, 'Saving...');
 
             if (state.isEditing) {
-                const id = elements.taskId.value;
-                payload.completed = elements.taskCompleted.checked;
+                const id = elements.taskId?.value;
+                payload.completed = !!elements.taskCompleted?.checked;
                 await apiUpdateTask(id, payload);
                 showToast('Task updated successfully!', 'success');
             } else {
@@ -520,7 +535,7 @@
         } catch (error) {
             showToast(error.message, 'error');
         } finally {
-            elements.saveTaskBtn.disabled = false;
+            setButtonLoading(elements.saveTaskBtn, false, null, defaultSaveText);
         }
     }
 
@@ -530,12 +545,14 @@
 
     function openDeleteModal(task) {
         state.taskToDelete = task;
-        elements.deleteTaskTitle.textContent = `"${task.title}"`;
-        elements.deleteModal.classList.remove('hidden');
+        if (elements.deleteTaskTitle) {
+            elements.deleteTaskTitle.textContent = `"${task.title}"`;
+        }
+        elements.deleteModal?.classList.remove('hidden');
     }
 
     function closeDeleteModal() {
-        elements.deleteModal.classList.add('hidden');
+        elements.deleteModal?.classList.add('hidden');
         state.taskToDelete = null;
     }
 
@@ -544,7 +561,7 @@
 
         const id = state.taskToDelete.id;
         try {
-            elements.confirmDeleteBtn.disabled = true;
+            setButtonLoading(elements.confirmDeleteBtn, true, 'Deleting...');
             await apiDeleteTask(id);
             showToast('Task deleted successfully.', 'info');
             closeDeleteModal();
@@ -552,7 +569,7 @@
         } catch (error) {
             showToast(error.message, 'error');
         } finally {
-            elements.confirmDeleteBtn.disabled = false;
+            setButtonLoading(elements.confirmDeleteBtn, false, null, 'Delete');
         }
     }
 
@@ -562,38 +579,38 @@
 
     function setupEventListeners() {
         // Modal toggles
-        elements.openAddModalBtn.addEventListener('click', openAddModal);
-        elements.emptyAddBtn.addEventListener('click', openAddModal);
-        elements.closeModalBtn.addEventListener('click', closeModal);
-        elements.cancelModalBtn.addEventListener('click', closeModal);
-        elements.taskForm.addEventListener('submit', handleFormSubmit);
+        elements.openAddModalBtn?.addEventListener('click', openAddModal);
+        elements.emptyAddBtn?.addEventListener('click', openAddModal);
+        elements.closeModalBtn?.addEventListener('click', closeModal);
+        elements.cancelModalBtn?.addEventListener('click', closeModal);
+        elements.taskForm?.addEventListener('submit', handleFormSubmit);
 
         // Delete modal
-        elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-        elements.confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+        elements.cancelDeleteBtn?.addEventListener('click', closeDeleteModal);
+        elements.confirmDeleteBtn?.addEventListener('click', handleConfirmDelete);
 
         // Close on clicking backdrop
-        elements.taskModal.addEventListener('click', (e) => {
+        elements.taskModal?.addEventListener('click', (e) => {
             if (e.target === elements.taskModal) closeModal();
         });
-        elements.deleteModal.addEventListener('click', (e) => {
+        elements.deleteModal?.addEventListener('click', (e) => {
             if (e.target === elements.deleteModal) closeDeleteModal();
         });
 
         // Keyboard navigation (Esc to close)
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                if (!elements.taskModal.classList.contains('hidden')) closeModal();
-                if (!elements.deleteModal.classList.contains('hidden')) closeDeleteModal();
+                if (!elements.taskModal?.classList.contains('hidden')) closeModal();
+                if (!elements.deleteModal?.classList.contains('hidden')) closeDeleteModal();
             }
         });
 
         // Search Input (with debounce)
         let debounceTimer;
-        elements.searchInput.addEventListener('input', () => {
+        elements.searchInput?.addEventListener('input', () => {
             const query = elements.searchInput.value;
             state.searchQuery = query;
-            elements.clearSearchBtn.classList.toggle('hidden', !query);
+            elements.clearSearchBtn?.classList.toggle('hidden', !query);
 
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
@@ -601,15 +618,15 @@
             }, 300);
         });
 
-        elements.clearSearchBtn.addEventListener('click', () => {
-            elements.searchInput.value = '';
+        elements.clearSearchBtn?.addEventListener('click', () => {
+            if (elements.searchInput) elements.searchInput.value = '';
             state.searchQuery = '';
-            elements.clearSearchBtn.classList.add('hidden');
+            elements.clearSearchBtn?.classList.add('hidden');
             loadData();
         });
 
         // Status Filter Pills
-        elements.pillButtons.forEach(btn => {
+        elements.pillButtons?.forEach(btn => {
             btn.addEventListener('click', () => {
                 elements.pillButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -619,19 +636,19 @@
         });
 
         // Priority Filter Dropdown
-        elements.priorityFilter.addEventListener('change', () => {
+        elements.priorityFilter?.addEventListener('change', () => {
             state.priorityFilter = elements.priorityFilter.value;
             loadData();
         });
 
         // Sort Control
-        elements.sortBy.addEventListener('change', () => {
+        elements.sortBy?.addEventListener('change', () => {
             state.sortBy = elements.sortBy.value;
             renderTasks();
         });
 
         // Retry Connection
-        elements.retryConnectionBtn.addEventListener('click', () => {
+        elements.retryConnectionBtn?.addEventListener('click', () => {
             loadData();
         });
     }
