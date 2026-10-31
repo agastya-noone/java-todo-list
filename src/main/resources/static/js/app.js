@@ -24,59 +24,61 @@
         isEditing: false
     };
 
-    // DOM Elements
-    const elements = {
-        backendStatus: document.getElementById('backendStatus'),
-        connectionBanner: document.getElementById('connectionBanner'),
-        connectionErrorText: document.getElementById('connectionErrorText'),
-        retryConnectionBtn: document.getElementById('retryConnectionBtn'),
+    // DOM Elements - initialized after DOM is ready
+    const elements = {};
+
+    function initElements() {
+        elements.backendStatus = document.getElementById('backendStatus');
+        elements.connectionBanner = document.getElementById('connectionBanner');
+        elements.connectionErrorText = document.getElementById('connectionErrorText');
+        elements.retryConnectionBtn = document.getElementById('retryConnectionBtn');
 
         // Stats
-        statTotal: document.getElementById('statTotal'),
-        statCompleted: document.getElementById('statCompleted'),
-        statPending: document.getElementById('statPending'),
-        statProgress: document.getElementById('statProgress'),
+        elements.statTotal = document.getElementById('statTotal');
+        elements.statCompleted = document.getElementById('statCompleted');
+        elements.statPending = document.getElementById('statPending');
+        elements.statProgress = document.getElementById('statProgress');
 
         // Search & Filters
-        searchInput: document.getElementById('searchInput'),
-        clearSearchBtn: document.getElementById('clearSearchBtn'),
-        pillButtons: document.querySelectorAll('.pill-btn'),
-        priorityFilter: document.getElementById('priorityFilter'),
-        sortBy: document.getElementById('sortBy'),
-        taskCountBadge: document.getElementById('taskCountBadge'),
+        elements.searchInput = document.getElementById('searchInput');
+        elements.clearSearchBtn = document.getElementById('clearSearchBtn');
+        elements.pillButtons = document.querySelectorAll('.pill-btn');
+        elements.priorityFilter = document.getElementById('priorityFilter');
+        elements.sortBy = document.getElementById('sortBy');
+        elements.taskCountBadge = document.getElementById('taskCountBadge');
 
         // Task List & States
-        taskList: document.getElementById('taskList'),
-        loadingIndicator: document.getElementById('loadingIndicator'),
-        emptyState: document.getElementById('emptyState'),
-        emptyAddBtn: document.getElementById('emptyAddBtn'),
+        elements.taskList = document.getElementById('taskList');
+        elements.loadingIndicator = document.getElementById('loadingIndicator');
+        elements.emptyState = document.getElementById('emptyState');
+        elements.emptyAddBtn = document.getElementById('emptyAddBtn');
 
         // Task Modal & Form
-        openAddModalBtn: document.getElementById('openAddModalBtn'),
-        taskModal: document.getElementById('taskModal'),
-        closeModalBtn: document.getElementById('closeModalBtn'),
-        cancelModalBtn: document.getElementById('cancelModalBtn'),
-        taskForm: document.getElementById('taskForm'),
-        modalTitle: document.getElementById('modalTitle'),
-        saveTaskBtn: document.getElementById('saveTaskBtn'),
-        saveBtnText: document.getElementById('saveBtnText'),
-        taskId: document.getElementById('taskId'),
-        taskTitle: document.getElementById('taskTitle'),
-        titleError: document.getElementById('titleError'),
-        taskDescription: document.getElementById('taskDescription'),
-        taskDueDate: document.getElementById('taskDueDate'),
-        completedToggleGroup: document.getElementById('completedToggleGroup'),
-        taskCompleted: document.getElementById('taskCompleted'),
+        elements.openAddModalBtn = document.getElementById('openAddModalBtn');
+        elements.taskModal = document.getElementById('taskModal');
+        elements.closeModalBtn = document.getElementById('closeModalBtn');
+        elements.cancelModalBtn = document.getElementById('cancelModalBtn');
+        elements.taskForm = document.getElementById('taskForm');
+        elements.modalTitle = document.getElementById('modalTitle');
+        elements.saveTaskBtn = document.getElementById('saveTaskBtn');
+        elements.saveBtnText = document.getElementById('saveBtnText');
+        elements.taskId = document.getElementById('taskId');
+        elements.taskTitle = document.getElementById('taskTitle');
+        elements.titleError = document.getElementById('titleError');
+        elements.taskDescription = document.getElementById('taskDescription');
+        elements.taskDueDate = document.getElementById('taskDueDate');
+        elements.completedToggleGroup = document.getElementById('completedToggleGroup');
+        elements.taskCompleted = document.getElementById('taskCompleted');
 
         // Delete Modal
-        deleteModal: document.getElementById('deleteModal'),
-        deleteTaskTitle: document.getElementById('deleteTaskTitle'),
-        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-        confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+        elements.deleteModal = document.getElementById('deleteModal');
+        elements.deleteTaskTitle = document.getElementById('deleteTaskTitle');
+        elements.cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        elements.confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
         // Toasts
-        toastContainer: document.getElementById('toastContainer')
-    };
+        elements.toastContainer = document.getElementById('toastContainer');
+    }
 
     // =========================================================================
     // API Client Functions (Fetch API)
@@ -494,19 +496,37 @@
     }
 
     async function handleFormSubmit(e) {
-        e.preventDefault();
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        }
 
-        const title = elements.taskTitle?.value?.trim() || '';
+        // Reliably locate the submit button across browser implementations
+        const submitBtn = (e && e.submitter)
+            || document.getElementById('saveTaskBtn')
+            || (e && e.target && e.target.querySelector && e.target.querySelector('button[type="submit"]'))
+            || document.querySelector('#taskModal button[type="submit"]')
+            || document.querySelector('#taskForm button[type="submit"]')
+            || elements.saveTaskBtn;
+
+        const titleInput = document.getElementById('taskTitle') || elements.taskTitle;
+        const title = titleInput ? titleInput.value.trim() : '';
+
+        const titleError = document.getElementById('titleError') || elements.titleError;
         if (!title) {
-            elements.titleError?.classList.remove('hidden');
-            elements.taskTitle?.focus();
+            if (titleError) titleError.classList.remove('hidden');
+            if (titleInput) titleInput.focus();
             return;
         }
-        elements.titleError?.classList.add('hidden');
+        if (titleError) titleError.classList.add('hidden');
 
-        const priority = elements.taskForm?.querySelector('input[name="priority"]:checked')?.value || 'MEDIUM';
-        const description = elements.taskDescription?.value?.trim() || '';
-        const dueDate = elements.taskDueDate?.value || null;
+        const formEl = (e && e.target) || document.getElementById('taskForm') || elements.taskForm;
+        const priority = formEl?.querySelector('input[name="priority"]:checked')?.value || 'MEDIUM';
+
+        const descInput = document.getElementById('taskDescription') || elements.taskDescription;
+        const description = descInput ? descInput.value.trim() : '';
+
+        const dueDateInput = document.getElementById('taskDueDate') || elements.taskDueDate;
+        const dueDate = (dueDateInput && dueDateInput.value) ? dueDateInput.value : null;
 
         const payload = {
             title: title,
@@ -517,12 +537,21 @@
 
         const defaultSaveText = state.isEditing ? 'Update Task' : 'Save Task';
 
-        try {
-            setButtonLoading(elements.saveTaskBtn, true, 'Saving...');
+        // 1. Loading state with explicit null check
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            const textTarget = submitBtn.querySelector('span') || submitBtn;
+            if (textTarget) {
+                textTarget.textContent = 'Saving...';
+            }
+        }
 
+        try {
             if (state.isEditing) {
-                const id = elements.taskId?.value;
-                payload.completed = !!elements.taskCompleted?.checked;
+                const idInput = document.getElementById('taskId') || elements.taskId;
+                const id = idInput ? idInput.value : '';
+                const completedCheckbox = document.getElementById('taskCompleted') || elements.taskCompleted;
+                payload.completed = completedCheckbox ? completedCheckbox.checked : false;
                 await apiUpdateTask(id, payload);
                 showToast('Task updated successfully!', 'success');
             } else {
@@ -535,7 +564,14 @@
         } catch (error) {
             showToast(error.message, 'error');
         } finally {
-            setButtonLoading(elements.saveTaskBtn, false, null, defaultSaveText);
+            // 2. Finally/completion block with explicit null check
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                const textTarget = submitBtn.querySelector('span') || submitBtn;
+                if (textTarget) {
+                    textTarget.textContent = defaultSaveText;
+                }
+            }
         }
     }
 
@@ -545,14 +581,17 @@
 
     function openDeleteModal(task) {
         state.taskToDelete = task;
-        if (elements.deleteTaskTitle) {
-            elements.deleteTaskTitle.textContent = `"${task.title}"`;
+        const deleteTitleEl = document.getElementById('deleteTaskTitle') || elements.deleteTaskTitle;
+        if (deleteTitleEl) {
+            deleteTitleEl.textContent = `"${task.title}"`;
         }
-        elements.deleteModal?.classList.remove('hidden');
+        const deleteModalEl = document.getElementById('deleteModal') || elements.deleteModal;
+        deleteModalEl?.classList.remove('hidden');
     }
 
     function closeDeleteModal() {
-        elements.deleteModal?.classList.add('hidden');
+        const deleteModalEl = document.getElementById('deleteModal') || elements.deleteModal;
+        deleteModalEl?.classList.add('hidden');
         state.taskToDelete = null;
     }
 
@@ -560,8 +599,17 @@
         if (!state.taskToDelete) return;
 
         const id = state.taskToDelete.id;
+        const deleteBtn = document.getElementById('confirmDeleteBtn')
+            || document.querySelector('#deleteModal .btn-danger')
+            || elements.confirmDeleteBtn;
+
+        if (deleteBtn) {
+            deleteBtn.disabled = true;
+            const textTarget = deleteBtn.querySelector('span') || deleteBtn;
+            if (textTarget) textTarget.textContent = 'Deleting...';
+        }
+
         try {
-            setButtonLoading(elements.confirmDeleteBtn, true, 'Deleting...');
             await apiDeleteTask(id);
             showToast('Task deleted successfully.', 'info');
             closeDeleteModal();
@@ -569,7 +617,11 @@
         } catch (error) {
             showToast(error.message, 'error');
         } finally {
-            setButtonLoading(elements.confirmDeleteBtn, false, null, 'Delete');
+            if (deleteBtn) {
+                deleteBtn.disabled = false;
+                const textTarget = deleteBtn.querySelector('span') || deleteBtn;
+                if (textTarget) textTarget.textContent = 'Delete';
+            }
         }
     }
 
@@ -654,9 +706,16 @@
     }
 
     // Bootstrapping
-    document.addEventListener('DOMContentLoaded', () => {
+    function bootstrap() {
+        initElements();
         setupEventListeners();
         loadData();
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+        bootstrap();
+    }
 
 })();
